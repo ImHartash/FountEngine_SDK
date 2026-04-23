@@ -21,8 +21,8 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{398d01d5-d562-490f-a1a7-9fc947542a19}</ProjectGuid>
-    <RootNamespace>FountModelConverter</RootNamespace>
+    <ProjectGuid>{2e194866-01d1-4651-8552-0dc3bed7e7b3}</ProjectGuid>
+    <RootNamespace>FountEngineTextureConverter</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -71,14 +71,14 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <TargetName>fntmdl</TargetName>
-    <OutDir>$(SolutionDir)bin\fntmdl\</OutDir>
-    <IntDir>$(SolutionDir)bin\temp\fntmdl\</IntDir>
+    <OutDir>$(SolutionDir)bin\fnttex\</OutDir>
+    <IntDir>$(SolutionDir)bin\temp\fnttex\</IntDir>
+    <TargetName>fnttex</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <TargetName>fntmdl</TargetName>
-    <OutDir>$(SolutionDir)bin\fntmdl\</OutDir>
-    <IntDir>$(SolutionDir)bin\temp\fntmdl\</IntDir>
+    <OutDir>$(SolutionDir)bin\fnttex\</OutDir>
+    <IntDir>$(SolutionDir)bin\temp\fnttex\</IntDir>
+    <TargetName>fnttex</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -138,8 +138,9 @@
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="fntmdl_header.hpp" />
-    <ClInclude Include="fntmdl_vertex.hpp" />
+    <ClInclude Include="ext\stb_image.h" />
+    <ClInclude Include="ext\stb_image_resize2.h" />
+    <ClInclude Include="fnttex_header.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -240,7 +240,7 @@ bool ConvertObjectToFntmdl(const std::string& strInputPath, const std::string& s
 
 int main(int argc, char* argv[]) {
 	if (argc < 3) {
-		std::cout << "Usage: fnt_convert <input.obj> <output.fntmdl>\n";
+		std::cout << "Usage: " << argv[0] << " <input.obj> <output.fntmdl>\n";
 		return 1;
 	}
 

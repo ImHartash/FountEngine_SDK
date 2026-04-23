@@ -84,7 +84,7 @@ void PackDirectory(const std::string& strInputDir, const std::string& strOutputF
 
 int main(int argc, char* argv[]) {
 	if (argc < 3) {
-		std::cout << "Usage: ./fntpk.exe <input_dir> <output.fntpk>\n";
+		std::cout << "Usage: " << argv[0] << " <input_dir> <output.fntpk>\n";
 		return 1;
 	}
 
