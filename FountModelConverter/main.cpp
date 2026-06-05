@@ -219,7 +219,7 @@ bool ConvertObjectToFntmdl(const std::string& strInputPath, const std::string& s
 	}
 
 	FNTMDL_HEADER Header = {};
-	Header.nMagic = 0x464E544D;
+	Header.nMagic = 0x4D544E46;
 	Header.nVersion = 1;
 	Header.nVertexCount = static_cast<uint32_t>(vecVertices.size());
 	Header.nIndexCount = static_cast<uint32_t>(vecIndices.size());
