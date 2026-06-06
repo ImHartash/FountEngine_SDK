@@ -20,9 +20,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="ext\json.hpp">
-      <Filter>Файлы заголовков</Filter>
-    </ClInclude>
     <ClInclude Include="headers\fntmat.hpp">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>

@@ -138,7 +138,6 @@
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="ext\json.hpp" />
     <ClInclude Include="headers\enums.hpp" />
     <ClInclude Include="headers\fntmat.hpp" />
     <ClInclude Include="headers\materialdesc.hpp" />

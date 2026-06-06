@@ -1,10 +1,8 @@
 #include <iostream>
 #include <fstream>
-#include "ext/json.hpp"
+#include <sstream>
 #include "headers/materialdesc.hpp"
 #include "headers/fntmat.hpp"
-
-namespace fs = std::filesystem;
 
 EBlendMode ProcedureBlendMode(const std::string& strBlendMode) {
 	if (strBlendMode == "Opaque") return EBlendMode::Opaque;
@@ -30,10 +28,12 @@ EDepthMode ProcedureDepthMode(const std::string& strDepthMode) {
 MaterialDesc_t ParseMaterialFromFile(const std::string& strFileName) {
 	std::ifstream fin(strFileName);
 	std::string strLine;
-	MaterialDesc_t Material = { "", 0 };
+	MaterialDesc_t Material = {};
+
+	std::cout << "Parsing .txt file...\n";
 
 	if (!fin.is_open()) { 
-		std::cerr << "Failed to open file.";
+		std::cerr << "Failed to open file.\n";
 		return Material;
 	}
 
@@ -87,20 +87,97 @@ MaterialDesc_t ParseMaterialFromFile(const std::string& strFileName) {
 	return Material;
 }
 
+bool CheckMaterialDesc(const MaterialDesc_t& Material) {
+	bool bSuccess = true;
+
+	std::cout << "\n";
+
+	if (Material.strDiffuseTexture.empty()) {
+		std::cerr << "Texture is missing or empty. Please check material config file.\n";
+		bSuccess &= false;
+	}
+
+	for (int i = 0; i < 3; i++) {
+		if (Material.flAmbient[i] < 0.f || Material.flAmbient[i] > 1.f) {
+			std::cerr << "Ambient component " << i << " is out of range [0..1]\n";
+			bSuccess &= false;
+		}
+
+		if (Material.flDiffuse[i] < 0.f || Material.flDiffuse[i] > 1.f) {
+			std::cerr << "Diffuse component " << i << " is out of range [0..1]\n";
+			bSuccess &= false;
+		}
+
+		if (Material.flSpecular[i] < 0.f || Material.flSpecular[i] > 1.f) {
+			std::cerr << "Specular component " << i << " is out of range [0..1]\n";
+			bSuccess &= false;
+		}
+	}
+
+	if (Material.flOpacity < 0.f || Material.flOpacity > 1.f) {
+		std::cerr << "Opacity is out of range. [0..1]\n";
+		bSuccess &= false;
+	}
+
+	if (Material.flShininess < 1.f || Material.flShininess > 256.f) {
+		std::cerr << "Shininess is out of range. [1..256]\n";
+		bSuccess &= false;
+	}
+
+	return bSuccess;
+}
+
 int main(int argc, char* argv[]) {
-	if (argc != 2) {
-		std::cerr << "Unknown amount of arguments. Usage ./fntmat.exe <input_desc.txt>\n";
-		return 0;
+	if (argc < 2 || argc > 3) {
+		std::cerr << "Unknown amount of arguments. Usage ./fntmat.exe <input_desc.txt> [output_file.fntmat]\n";
+		return 1;
 	}
 
 	std::string strFile = argv[1];
 	MaterialDesc_t Material = ParseMaterialFromFile(strFile);
 
-	std::cout << "Path: " << Material.strDiffuseTexture << "\n";
-	std::cout << "Dif: " << Material.flDiffuse[0] << " "
-		<< Material.flDiffuse[1] << " "
-		<< Material.flDiffuse[2] << "\n";
-	std::cout << "BlendMode: " << (Material.BlendMode == EBlendMode::AlphaBlend ? "AlphaBlend" : "Other") << "\n";
+	if (!strFile.ends_with(".txt")) {
+		std::cerr << "Invalid file extension. File should be in '.txt' format.\n";
+		return 1;
+	}
+
+	if (!CheckMaterialDesc(Material)) {
+		std::cerr << "\nFailed to bake material: fix errors above to bake material.";
+		return 1;
+	}
+
+	FNTMatHeader_t Header = {};
+	Header.nMagic = 'TMTF';
+	Header.nVersion = 1;
+
+	FNTMatData_t Data = {};
+	strncpy_s(Data.szDiffuseTexture, sizeof(Data.szDiffuseTexture), Material.strDiffuseTexture.c_str(), sizeof(Data.szDiffuseTexture) - 1);
+	for (int i = 0; i < 3; i += 1) {
+		Data.flAmbient[i] = Material.flAmbient[i];
+		Data.flDiffuse[i] = Material.flDiffuse[i];
+		Data.flSpecular[i] = Material.flSpecular[i];
+	}
+
+	Data.flOpacity = Material.flOpacity;
+	Data.flShininess = Material.flShininess;
+
+	Data.nBlendMode = static_cast<uint32_t>(Material.BlendMode);
+	Data.nCullMode = static_cast<uint32_t>(Material.CullMode);
+	Data.nDepthMode = static_cast<uint32_t>(Material.DepthMode);
+
+	std::string strFileOut = (argc == 3 ? argv[2] : strFile.substr(0, strFile.size() - 4));
+	if (!strFileOut.ends_with(".fntmat")) strFileOut = strFileOut + ".fntmat";
+
+	std::ofstream fout(strFileOut, std::ios::binary);
+	if (!fout.is_open()) {
+		std::cerr << "Failed to open or create output file.\n";
+		return 1;
+	}
+
+	fout.write(reinterpret_cast<const char*>(&Header), sizeof(Header));
+	fout.write(reinterpret_cast<const char*>(&Data), sizeof(Data));
+
+	std::cout << "Successfully baket material to " << strFileOut << "\n";
 
 	return 0;
 }
