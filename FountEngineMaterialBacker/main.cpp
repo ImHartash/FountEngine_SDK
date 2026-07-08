@@ -147,7 +147,7 @@ int main(int argc, char* argv[]) {
 	}
 
 	FNTMatHeader_t Header = {};
-	Header.nMagic = 'TMTF';
+	Header.nMagic = 0x544D5446;
 	Header.nVersion = 1;
 
 	FNTMatData_t Data = {};
