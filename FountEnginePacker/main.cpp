@@ -2,8 +2,8 @@
 #include <vector>
 #include <fstream>
 #include <filesystem>
-#include "fntpk_header.hpp"
-#include "fntpk_block.hpp"
+#include "headers/fntpk_header.hpp"
+#include "headers/fntpk_block.hpp"
 
 namespace fs = std::filesystem;
 
