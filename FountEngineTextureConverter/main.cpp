@@ -1,13 +1,13 @@
 #include <iostream>
 #include <vector>
 #include <fstream>
-#include "fnttex_header.hpp"
+#include "headers/fnttex_header.hpp"
 
 #define STB_IMAGE_IMPLEMENTATION
-#include "ext/stb_image.h"
+#include "stb_image.h"
 
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
-#include "ext/stb_image_resize2.h"
+#include "stb_image_resize2.h"
 
 int main(int argc, char* argv[]) {
 	if (argc < 2) {

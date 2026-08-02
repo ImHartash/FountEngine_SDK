@@ -3,8 +3,8 @@
 #include <filesystem>
 #include <fstream>
 #include <unordered_map>
-#include "fntmdl_header.hpp"
-#include "fntmdl_vertex.hpp"
+#include "headers/fntmdl_header.hpp"
+#include "headers/fntmdl_vertex.hpp"
 
 struct Vector2_t {
 	float u, v;

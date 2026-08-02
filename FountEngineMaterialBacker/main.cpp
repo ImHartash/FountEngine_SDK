@@ -177,7 +177,8 @@ int main(int argc, char* argv[]) {
 	fout.write(reinterpret_cast<const char*>(&Header), sizeof(Header));
 	fout.write(reinterpret_cast<const char*>(&Data), sizeof(Data));
 
-	std::cout << "Successfully baket material to " << strFileOut << "\n";
+	std::cout << "Successfully baked material to " << strFileOut << "\n";
+	std::cout << "Test: " << Data.flOpacity << "\n";
 
 	return 0;
 }

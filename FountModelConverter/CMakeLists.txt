@@ -1,0 +1,1 @@
+add_executable(fntmdl main.cpp)
