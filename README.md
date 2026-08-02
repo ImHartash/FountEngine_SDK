@@ -1,11 +1,11 @@
-<center>
+<div align="center">
 
 # FountEngine SDK
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 [![C++](https://img.shields.io/badge/C%2B%2B-23-blue.svg?style=for-the-badge)](https://en.wikipedia.org/wiki/C%2B%2B23)
 
-</center>
+</div>
 
 **FountEngine SDK** is the content pipeline for [FountEngine](https://github.com/ImHartash/FountEngine). It converts human-editable source assets — images, Wavefront `.obj` models, plain-text material descriptions — into the compact binary formats the engine loads at runtime. The engine never reads source formats directly; it only reads what this SDK produces.
 
