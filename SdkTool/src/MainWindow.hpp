@@ -16,6 +16,7 @@ struct PendingConversion_t {
 	QString strDisplayName;
 	QString strSourcePath;
 	QString strOutputPath;
+	QString strMapFile;
 };
 
 struct ConversionRecord_t {
@@ -30,6 +31,7 @@ public:
 	explicit MainWindow(const QString& strProjectPath, QWidget* pParent = nullptr);
 
 private slots:
+	void OnAssignMaterials(const QString& strObjPath, const QString& strTargetDirectory);
 	void OnFilesDropped(const QString& strTargetDir, const QStringList& listPaths);
 	void OnSelectionChanged();
 	void OnPackClicked();
@@ -40,7 +42,7 @@ private slots:
 private:
 	void SetupUi();
 	void ProcessNextInQueue();
-	void EnqueueConversion(const QString& strSourcePath, const QString& strTargetDir);
+	void EnqueueConversion(const QString& strSourcePath, const QString& strTargetDir, const QString& strAdditionalArg = QString());
 	void ReloadProject();
 	void UpdateFileInfoPanel(const QString& strPath);
 	void CheckFirstRun();
@@ -48,6 +50,7 @@ private:
 	QPixmap RenderWireframe(const QString& strPath);
 
 	QString m_strProjectPath;
+	QString m_strActiveMapFile;
 
 	CAssetFileSystemModel* m_pFileSystemModel;
 	CFileIconProvider* m_pIconProvider;

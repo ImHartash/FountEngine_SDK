@@ -27,8 +27,14 @@ add_executable(sdk_tool
     src/CPackExplorerDialog/CPackExplorerDialog.cpp
     src/CMaterialCreatorDialog/CMaterialCreatorDialog.hpp
     src/CMaterialCreatorDialog/CMaterialCreatorDialog.cpp
+    src/CDX11Renderer/CDX11Renderer.hpp
+    src/CDX11Renderer/CDX11Renderer.cpp
+    src/CChooseMaterialDialog/CChooseMaterialDialog.hpp
+    src/CChooseMaterialDialog/CChooseMaterialDialog.cpp
+    src/CObjSubmeshParser/CObjSubmeshParser.hpp
+    src/CObjSubmeshParser/CObjSubmeshParser.cpp
 )
-target_link_libraries(sdk_tool PRIVATE Qt6::Widgets)
+target_link_libraries(sdk_tool PRIVATE Qt6::Widgets d3d11 d3dcompiler)
 
 if(WIN32)
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")

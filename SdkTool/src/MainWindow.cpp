@@ -3,6 +3,7 @@
 #include "CSettingsManager/CSettingsManager.hpp"
 #include "CPackExplorerDialog/CPackExplorerDialog.hpp"
 #include "CMaterialCreatorDialog/CMaterialCreatorDialog.hpp"
+#include "CChooseMaterialDialog/CChooseMaterialDialog.hpp"
 #include "CFntFormats.hpp"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -191,6 +192,13 @@ void MainWindow::SetupUi() {
 	ReloadProject();
 }
 
+void MainWindow::OnAssignMaterials(const QString& strObjPath, const QString& strTargetDirectory) {
+	CChooseMaterialDialog Dialog(strObjPath, strTargetDirectory);
+	if (Dialog.exec() != QDialog::Accepted) return;
+
+	EnqueueConversion(Dialog.ObjPath(), strTargetDirectory, Dialog.MappingFilePath());
+}
+
 void MainWindow::OnFilesDropped(const QString& strTargetDir, const QStringList& listPaths) {
 	for (const QString& strSourcePath : listPaths) {
 		QFileInfo Info(strSourcePath);
@@ -200,7 +208,10 @@ void MainWindow::OnFilesDropped(const QString& strTargetDir, const QStringList& 
 			|| strExtension == "jpg" || strExtension == "jpeg");
 
 		if (bNeedConversion) {
-			EnqueueConversion(strSourcePath, strTargetDir);
+			if (strExtension == "obj") {
+				OnAssignMaterials(strSourcePath, strTargetDir);
+			}
+			else EnqueueConversion(strSourcePath, strTargetDir);
 		} else {
 			QString strDestPath = strTargetDir + "/" + Info.fileName();
 			if (QFileInfo(strSourcePath).absoluteFilePath() != QFileInfo(strDestPath).absoluteFilePath())
@@ -210,7 +221,7 @@ void MainWindow::OnFilesDropped(const QString& strTargetDir, const QStringList& 
 	ProcessNextInQueue();
 }
 
-void MainWindow::EnqueueConversion(const QString& strSourcePath, const QString& strTargetDir) {
+void MainWindow::EnqueueConversion(const QString& strSourcePath, const QString& strTargetDir, const QString& strAdditionalArg) {
 	QFileInfo Info(strSourcePath);
 	QString strExt = Info.suffix().toLower();
 	QString strBaseName = Info.completeBaseName();
@@ -221,9 +232,13 @@ void MainWindow::EnqueueConversion(const QString& strSourcePath, const QString& 
 
 	QString strConvertersDir = CSettingsManager::GetInstance().GetConvertersDir();
 	if (strExt == "obj") {
+		Conversion.strMapFile = strAdditionalArg;
 		Conversion.strExePath = strConvertersDir + "/fntmdl";
 		Conversion.strOutputPath = strTargetDir + "/" + strBaseName + ".fntmdl";
 		Conversion.listArgs = { strSourcePath, Conversion.strOutputPath };
+
+		if (!strAdditionalArg.isEmpty())
+			Conversion.listArgs << strAdditionalArg;
 	} else if (strExt == "png" || strExt == "jpg") {
 		Conversion.strExePath = strConvertersDir + "/fnttex";
 		Conversion.strOutputPath = strTargetDir + "/" + strBaseName + ".fnttex";
@@ -239,6 +254,8 @@ void MainWindow::ProcessNextInQueue() {
 	if (m_QueuePending.isEmpty() || m_pRunner->IsRunning()) return;
 
 	PendingConversion_t Conversion = m_QueuePending.dequeue();
+	m_strActiveMapFile = Conversion.strMapFile;
+
 	m_pStatusIconLabel->clear();
 	m_pStatusTextLabel->setText("Converting: " + Conversion.strDisplayName);
 	m_pStatusTextLabel->setStyleSheet("color: #999999;");
@@ -259,6 +276,12 @@ void MainWindow::OnConversionFinished(int nExitCode) {
 		m_pStatusTextLabel->setText("Error, exit code: " + QString::number(nExitCode));
 		m_pStatusTextLabel->setStyleSheet("color: #e05252;");
 	}
+
+	if (!m_strActiveMapFile.isEmpty()) {
+		QFile::remove(m_strActiveMapFile);
+		m_strActiveMapFile.clear();
+	}
+
 	ProcessNextInQueue();
 }
 
