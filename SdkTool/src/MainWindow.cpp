@@ -193,7 +193,7 @@ void MainWindow::SetupUi() {
 }
 
 void MainWindow::OnAssignMaterials(const QString& strObjPath, const QString& strTargetDirectory) {
-	CChooseMaterialDialog Dialog(strObjPath, strTargetDirectory);
+	CChooseMaterialDialog Dialog(strObjPath, strTargetDirectory, m_strProjectPath);
 	if (Dialog.exec() != QDialog::Accepted) return;
 
 	EnqueueConversion(Dialog.ObjPath(), strTargetDirectory, Dialog.MappingFilePath());

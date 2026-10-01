@@ -8,7 +8,7 @@ class CChooseMaterialDialog : public QDialog {
 	Q_OBJECT
 public:
 	explicit CChooseMaterialDialog(const QString& strObjPath,
-		const QString& strTargetDirectory,
+		const QString& strTargetDirectory, const QString& strProjectDirectory,
 		QWidget* pParent = nullptr);
 
 	QString ObjPath() const { return m_strObjPath; }
@@ -29,6 +29,7 @@ private:
 	
 	QString m_strObjPath;
 	QString m_strTargetDir;
+	QString m_strProjectDir;
 	QString m_strOutPath;
 	QString m_strMappingFile;
 

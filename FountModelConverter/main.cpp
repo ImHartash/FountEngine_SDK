@@ -92,7 +92,7 @@ bool ConvertObjectToFntmdl(const std::string& strInputPath,
 			}
 
 			float u = std::stof(vecTokens[1]);
-			float v = 1.f - std::stof(vecTokens[2]);
+			float v = std::stof(vecTokens[2]);
 			vecTexcoords.emplace_back(u, v);
 		}
 		else if (strCommand == "vn") { // Vertex Normal

@@ -8,6 +8,7 @@
 #include <QPushButton>
 #include <QFileInfo>
 #include <QDir>
+#include <QDirIterator>
 #include <QMessageBox>
 #include <QFile>
 #include <QPixmap>
@@ -15,8 +16,9 @@
 #include <QDateTime>
 
 CChooseMaterialDialog::CChooseMaterialDialog(const QString& strObjPath,
-	const QString& strTargetDirectory,
-	QWidget* pParent) : QDialog(pParent), m_strObjPath(strObjPath), m_strTargetDir(strTargetDirectory) 
+	const QString& strTargetDirectory, const QString& strProjectDirectory,
+	QWidget* pParent) : QDialog(pParent), m_strObjPath(strObjPath), m_strTargetDir(strTargetDirectory),
+	m_strProjectDir(strProjectDirectory)
 {
 	if (!CObjSubmeshParser::Parse(m_strObjPath, m_Meshes) || m_Meshes.isEmpty()) {
 		QMessageBox::critical(this, "Failed to parse file", "No submeshes (usemtl groups) found in .obj.");
@@ -101,7 +103,7 @@ void CChooseMaterialDialog::Refresh() {
 	m_pTitleLabel->setText(QString("Mesh %1 of %2 — choose a material\n(%3)")
 		.arg(m_nCurrent + 1).arg(nTotal)
 		.arg(m_Meshes[m_nCurrent].strMaterial.isEmpty()
-			? "(default)" : m_Meshes[m_nCurrent].strMaterial));
+			? "(none)" : m_Meshes[m_nCurrent].strMaterial));
 
 	// Render the image
 	CDX11Renderer R;
@@ -111,14 +113,35 @@ void CChooseMaterialDialog::Refresh() {
 	m_pPreviewLabel->setPixmap(QPixmap::fromImage(Img));
 
 	// =====
+	//m_pMaterialCombo->clear();
+	//m_pMaterialCombo->addItem("(none)", QString());
+	//QDir Dir(m_strTargetDir);
+	//for (const QString& p : Dir.entryList({ "*.fntmat" }, QDir::Files))
+	//	m_pMaterialCombo->addItem("materials/" + p, "materials/" + p);
+
+	//if (!m_vecChosen[m_nCurrent].isEmpty())
+	//	m_pMaterialCombo->setCurrentText(m_vecChosen[m_nCurrent]);
+
+	//m_pBackBtn->setEnabled(m_nCurrent > 0);
+	//bool bLast = (m_nCurrent >= nTotal - 1);
+	//m_pNextBtn->setVisible(!bLast);
+	//m_pApplyBtn->setVisible(bLast);
+
 	m_pMaterialCombo->clear();
 	m_pMaterialCombo->addItem("(none)", QString());
-	QDir Dir(m_strTargetDir);
-	for (const QString& p : Dir.entryList({ "*.fntmat" }, QDir::Files))
-		m_pMaterialCombo->addItem("materials/" + p, "materials/" + p);
+	QDir ProjectDir(m_strProjectDir);
 
-	if (!m_vecChosen[m_nCurrent].isEmpty())
-		m_pMaterialCombo->setCurrentText(m_vecChosen[m_nCurrent]);
+	QDirIterator DirIter(m_strProjectDir, { "*.fntmat" }, QDir::Files, QDirIterator::Subdirectories);
+	while (DirIter.hasNext()) {
+		DirIter.next();
+		QString strRelativePath = ProjectDir.relativeFilePath(DirIter.filePath());
+		m_pMaterialCombo->addItem(strRelativePath, strRelativePath);
+	}
+
+	if (!m_vecChosen[m_nCurrent].isEmpty()) {
+		int nIndex = m_pMaterialCombo->findData(m_vecChosen[m_nCurrent]);
+		if (nIndex >= 0) m_pMaterialCombo->setCurrentIndex(nIndex);
+	}
 
 	m_pBackBtn->setEnabled(m_nCurrent > 0);
 	bool bLast = (m_nCurrent >= nTotal - 1);
@@ -127,8 +150,9 @@ void CChooseMaterialDialog::Refresh() {
 }
 
 void CChooseMaterialDialog::CollectFromCombo() {
-	if (m_nCurrent >= 0 && m_nCurrent < m_vecChosen.size())
-		m_vecChosen[m_nCurrent] = m_pMaterialCombo->currentText();
+	if (m_nCurrent >= 0 && m_nCurrent < m_vecChosen.size()) {
+		m_vecChosen[m_nCurrent] = m_pMaterialCombo->currentData().toString();
+	}
 }
 
 void CChooseMaterialDialog::BuildMappingFile() {
