@@ -185,11 +185,15 @@ bool ConvertObjectToFntmdl(const std::string& strInputPath,
 		Submesh.nIndexOffset = nSubmeshIndexStart;
 		Submesh.nIndexCount = nSubmeshIndexCount;
 
+		std::string strMaterialName = strSubmeshMaterial;
+		if (strMaterialName.empty())
+			strMaterialName = "default";
+
 		std::string strPath;
-		if (pMapping && pMapping->count(strSubmeshMaterial))
-			strPath = pMapping->at(strSubmeshMaterial);
-		else if (!strSubmeshMaterial.empty())
-			strPath = strMaterialPrefix + strSubmeshMaterial + ".fntmat";
+		if (pMapping && pMapping->count(strMaterialName))
+			strPath = pMapping->at(strMaterialName);
+		else if (!strMaterialName.empty())
+			strPath = strMaterialPrefix + strMaterialName + ".fntmat";
 
 		memcpy(Submesh.szMaterialPath, strPath.c_str(), std::min<size_t>(strPath.size(), 259));
 		vecSubmeshes.push_back(Submesh);
