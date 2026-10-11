@@ -36,11 +36,10 @@ std::vector<std::string> SplitString(const std::string& strSource) {
 	return vecTokens;
 }
 
-bool StartsWith(const std::string& strSource, const std::string& strPrefix) {
-	return strSource.size() >= strPrefix.size() && strSource.substr(0, strPrefix.size()) == strPrefix;
-}
-
-bool ConvertObjectToFntmdl(const std::string& strInputPath, const std::string& strOutputPath) {
+bool ConvertObjectToFntmdl(const std::string& strInputPath, 
+	const std::string& strOutputPath, const std::string& strMaterialPrefix,
+	const std::unordered_map<std::string, std::string>* pMapping) 
+{
 	std::ifstream fin(strInputPath);
 	if (!fin.is_open()) {
 		std::cout << "Couldn't open source file " << strInputPath << std::endl;
@@ -56,8 +55,13 @@ bool ConvertObjectToFntmdl(const std::string& strInputPath, const std::string& s
 		int t;
 		int n;
 	};
-	std::vector<std::vector<FaceVertex_t>> vecFaces;
+	struct Face_t {
+		std::vector<FaceVertex_t> vecVertices;
+		std::string strMaterial;
+	};
+	std::vector<Face_t> vecFaces;
 
+	std::string strCurrentMaterial;	
 	std::string strLine;
 	int nLineNum = 0;
 	while (std::getline(fin, strLine)) {
@@ -102,8 +106,16 @@ bool ConvertObjectToFntmdl(const std::string& strInputPath, const std::string& s
 			float z = std::stof(vecTokens[3]);
 			vecNormals.emplace_back(x, y, z);
 		}
+		else if (strCommand == "usemtl") { // Material
+			if (vecTokens.size() < 2) {
+				std::cerr << "[WARN] Malfored 'usemtl' at line " << nLineNum << std::endl;
+				continue;
+			}
+
+			strCurrentMaterial = vecTokens[1];
+		}
 		else if (strCommand == "f") {
-			std::vector<FaceVertex_t> vecFace;
+			Face_t Face;
 			for (size_t i = 1; i < vecTokens.size(); i++) {
 				const std::string& strVertSpec = vecTokens[i];
 				FaceVertex_t fv = { 0, 0, 0 };
@@ -115,9 +127,9 @@ bool ConvertObjectToFntmdl(const std::string& strInputPath, const std::string& s
 					fv.p = std::stoi(strVertSpec);
 				}
 				else {
-					std::string pstr = strVertSpec.substr(0, nSlash1);
-					if (!pstr.empty()) fv.p = std::stoi(pstr);
 					if (nSlash1 != nSlash2) {
+						std::string pstr = strVertSpec.substr(0, nSlash1);
+						if (!pstr.empty()) fv.p = std::stoi(pstr);
 						std::string tstr = strVertSpec.substr(nSlash1 + 1, nSlash2 - nSlash1 - 1);
 						if (!tstr.empty()) fv.t = std::stoi(tstr);
 						std::string nstr = strVertSpec.substr(nSlash2 + 1);
@@ -129,15 +141,16 @@ bool ConvertObjectToFntmdl(const std::string& strInputPath, const std::string& s
 					}
 				}
 
-				vecFace.push_back(fv);
+				Face.vecVertices.push_back(fv);
 			}
 
-			if (vecFace.size() < 3) {
+			if (Face.vecVertices.size() < 3) {
 				std::cerr << "[WARN] Face with less than 3 vertices at line " << nLineNum << std::endl;
 				continue;
 			}
 
-			vecFaces.push_back(vecFace);
+			Face.strMaterial = strCurrentMaterial;
+			vecFaces.push_back(std::move(Face));
 		}
 	}
 
@@ -151,6 +164,7 @@ bool ConvertObjectToFntmdl(const std::string& strInputPath, const std::string& s
 
 	std::vector<FNTMDL_VERTEX> vecVertices;
 	std::vector<uint32_t> vecIndices;
+	std::vector<FNTMDL_SUBMESH> vecSubmeshes;
 
 	std::unordered_map<uint64_t, uint32_t> UniqueMap;
 	auto PackKey = [](int p, int t, int n) -> uint64_t {
@@ -161,36 +175,68 @@ bool ConvertObjectToFntmdl(const std::string& strInputPath, const std::string& s
 		return uKey;
 	};
 
-	for (const auto& vecFace : vecFaces) {
-		for (const auto& fv : vecFace) {
-			int nPosIndex = fv.p - 1;
-			int nTexcoordIndex = (bHasTexcoords && fv.t > 0) ? fv.t - 1 : -1;
-			int nNormalIndex = (bHasNormals && fv.n > 0) ? fv.n - 1 : -1;
+	std::string strSubmeshMaterial;
+	uint32_t nSubmeshIndexStart = 0;
+	uint32_t nSubmeshIndexCount = 0;
+
+	auto FlushSubmesh = [&]() {
+		if (nSubmeshIndexCount == 0) return;
+		FNTMDL_SUBMESH Submesh = {};
+		Submesh.nIndexOffset = nSubmeshIndexStart;
+		Submesh.nIndexCount = nSubmeshIndexCount;
+
+		std::string strMaterialName = strSubmeshMaterial;
+		if (strMaterialName.empty())
+			strMaterialName = "default";
+
+		std::string strPath;
+		if (pMapping && pMapping->count(strMaterialName))
+			strPath = pMapping->at(strMaterialName);
+		else if (!strMaterialName.empty())
+			strPath = strMaterialPrefix + strMaterialName + ".fntmat";
+
+		memcpy(Submesh.szMaterialPath, strPath.c_str(), std::min<size_t>(strPath.size(), 259));
+		vecSubmeshes.push_back(Submesh);
+		std::cout << "Packed submesh. Material path - " << Submesh.szMaterialPath << std::endl;
+	};
+
+	for (const Face_t& Face : vecFaces) {
+		if (Face.strMaterial != strSubmeshMaterial) {
+			FlushSubmesh();
+			strSubmeshMaterial = Face.strMaterial;
+			nSubmeshIndexStart = static_cast<uint32_t>(vecIndices.size());
+			nSubmeshIndexCount = 0;
+		}
+
+		for (const FaceVertex_t& FaceVertex : Face.vecVertices) {
+			int nPosIndex = FaceVertex.p - 1;
+			int nTexcoordIndex = (bHasTexcoords && FaceVertex.t > 0) ? FaceVertex.t - 1 : -1;
+			int nNormalIndex = (bHasTexcoords && FaceVertex.n > 0) ? FaceVertex.n - 1 : -1;
 
 			if (nPosIndex < 0 || nPosIndex >= static_cast<int>(vecPositions.size())) {
-				std::cerr << "[ERROR] Position index out of range." << std::endl;
+				std::cerr << "[ERROR] Position index out of range.\n";
 				return false;
 			}
 
-			uint64_t nKey = PackKey(fv.p, fv.t, fv.n);
+			uint64_t nKey = PackKey(FaceVertex.p, FaceVertex.t, FaceVertex.n);
 			auto pIterator = UniqueMap.find(nKey);
 			if (pIterator != UniqueMap.end()) {
 				vecIndices.push_back(pIterator->second);
 			}
 			else {
 				uint32_t nNewIndex = static_cast<uint32_t>(vecVertices.size());
-				 
-				FNTMDL_VERTEX Vertex;
-				const Vector3_t& vecPos = vecPositions[nPosIndex];
-				Vertex.px = vecPos.x;
-				Vertex.py = vecPos.y;
-				Vertex.pz = vecPos.z;
+
+				FNTMDL_VERTEX Vertex = {};
+				const Vector3_t& vecPosition = vecPositions[nPosIndex];
+				Vertex.px = vecPosition.x;
+				Vertex.py = vecPosition.y;
+				Vertex.pz = vecPosition.z;
 
 				if (bHasNormals && nNormalIndex >= 0) {
-					const Vector3_t& vecNorm = vecNormals[nNormalIndex];
-					Vertex.nx = vecNorm.x;
-					Vertex.ny = vecNorm.y;
-					Vertex.nz = vecNorm.z;
+					const Vector3_t& vecNormal = vecNormals[nNormalIndex];
+					Vertex.nx = vecNormal.x;
+					Vertex.ny = vecNormal.y;
+					Vertex.nz = vecNormal.z;
 				}
 				else {
 					Vertex.nx = Vertex.ny = Vertex.nz = 0.f;
@@ -209,7 +255,17 @@ bool ConvertObjectToFntmdl(const std::string& strInputPath, const std::string& s
 				UniqueMap[nKey] = nNewIndex;
 				vecIndices.push_back(nNewIndex);
 			}
+
+			++nSubmeshIndexCount;
 		}
+	}
+	FlushSubmesh();
+
+	if (vecSubmeshes.empty()) {
+		FNTMDL_SUBMESH Submesh = {};
+		Submesh.nIndexOffset = 0;
+		Submesh.nIndexCount = static_cast<uint32_t>(vecIndices.size());
+		vecSubmeshes.push_back(Submesh);
 	}
 
 	std::ofstream fout(strOutputPath, std::ios::binary);
@@ -220,19 +276,27 @@ bool ConvertObjectToFntmdl(const std::string& strInputPath, const std::string& s
 
 	FNTMDL_HEADER Header = {};
 	Header.nMagic = 0x4D544E46;
-	Header.nVersion = 1;
+	Header.nVersion = 2;
+
 	Header.nVertexCount = static_cast<uint32_t>(vecVertices.size());
 	Header.nIndexCount = static_cast<uint32_t>(vecIndices.size());
+	Header.nSubmeshCount = static_cast<uint32_t>(vecSubmeshes.size());
+
 	Header.nVertexOffset = sizeof(Header);
 	Header.nIndexOffset = Header.nVertexOffset + Header.nVertexCount * sizeof(FNTMDL_VERTEX);
+	Header.nSubmeshOffset = Header.nIndexOffset + Header.nIndexCount * sizeof(uint32_t);
+
 	Header.nFlags = (bHasNormals ? 1 : 0) | (bHasTexcoords ? 2 : 0);
 
 	fout.write(reinterpret_cast<const char*>(&Header), sizeof(Header));
 	fout.write(reinterpret_cast<const char*>(vecVertices.data()), vecVertices.size() * sizeof(FNTMDL_VERTEX));
 	fout.write(reinterpret_cast<const char*>(vecIndices.data()), vecIndices.size() * sizeof(uint32_t));
+	fout.write(reinterpret_cast<const char*>(vecSubmeshes.data()), vecSubmeshes.size() * sizeof(FNTMDL_SUBMESH));
 
 	std::cout << "Conversion successful!" << std::endl;
-	std::cout << "Vertices: " << vecVertices.size() << ", Indices: " << vecIndices.size() << std::endl;
+	std::cout << "Vertices: " << vecVertices.size() 
+		<< ", Indices: " << vecIndices.size() 
+		<< ", Submeshes: " << vecSubmeshes.size() << std::endl;
 	std::cout << "Output file: " << strOutputPath << std::endl;
 	
 	return true;
@@ -240,19 +304,35 @@ bool ConvertObjectToFntmdl(const std::string& strInputPath, const std::string& s
 
 int main(int argc, char* argv[]) {
 	if (argc < 3) {
-		std::cout << "Usage: " << argv[0] << " <input.obj> <output.fntmdl>\n";
+		std::cout << "Usage: " << argv[0] << " <input.obj> <output.fntmdl> [mapping.txt] [material_prefix]\n";
 		return 1;
 	}
 
-	std::string strInputPath = argv[1];
-	std::string strOutputPath = argv[2];
+	std::unordered_map<std::string, std::string> Mapping;
+	if (argc >= 4) {
+		std::ifstream fin(argv[3]);
+		std::string strLine;
+		while (std::getline(fin, strLine)) {
+			if (strLine.empty() || strLine[0] == '#')
+				continue;
 
-	if (!std::filesystem::exists(strInputPath)) {
+			std::istringstream iss(strLine);
+			std::string strName, strPath;
+			if (iss >> strName >> strPath)
+				Mapping[strName] = strPath;
+		}
+	}
+
+	std::string strMaterialPrefix = (argc >= 5) ? argv[4] : "materials/";
+
+	if (!std::filesystem::exists(argv[1])) {
 		std::cerr << "[ERROR] Input file does not exists. " << std::endl;
 		return 1;
 	}
 
-	if (!ConvertObjectToFntmdl(strInputPath, strOutputPath)) {
+	if (!ConvertObjectToFntmdl(argv[1], argv[2], strMaterialPrefix,
+		Mapping.empty() ? nullptr : &Mapping)) 
+	{
 		std::cerr << "Conversion failed.\n";
 		return 1;
 	}
